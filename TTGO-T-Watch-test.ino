@@ -27,6 +27,9 @@ enum {
 #define WATCH_FLAG_BMA_IRQ      _BV(3)
 #define WATCH_FLAG_AXP_IRQ      _BV(4)
 
+
+LV_FONT_DECLARE(IPAexGothic)
+
 QueueHandle_t g_event_queue_handle = NULL;
 EventGroupHandle_t g_event_group = NULL;
 EventGroupHandle_t isr_group = NULL;
@@ -90,6 +93,7 @@ lv_obj_t *setupGUI(){
   cont_style.body.grad_color = LV_COLOR_WHITE;
   cont_style.body.opa = 255;
   cont_style.body.border.width = 0;
+  cont_style.text.font = &IPAexGothic;
   cont_style.text.color = LV_COLOR_BLACK;
   
   lv_obj_t *view = lv_cont_create(lv_scr_act(), nullptr);
