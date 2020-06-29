@@ -94,6 +94,7 @@ lv_obj_t *setupGUI(){
   cont_style.body.opa = 255;
   cont_style.body.border.width = 0;
   cont_style.text.font = &IPAexGothic;
+  // cont_style.text.font = &lv_font_roboto_16;
   cont_style.text.color = LV_COLOR_BLACK;
   
   lv_obj_t *view = lv_cont_create(lv_scr_act(), nullptr);
