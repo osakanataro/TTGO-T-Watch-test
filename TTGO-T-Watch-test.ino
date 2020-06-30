@@ -29,13 +29,18 @@ enum {
 
 
 LV_FONT_DECLARE(IPAexGothic)
+LV_IMG_DECLARE(step);
 
 QueueHandle_t g_event_queue_handle = NULL;
 EventGroupHandle_t g_event_group = NULL;
 EventGroupHandle_t isr_group = NULL;
 bool lenergy = false;
 TTGOClass *twatch = nullptr;
-static lv_obj_t *test_text = nullptr;
+static lv_obj_t *clock_text = nullptr;
+static lv_obj_t *statusBar_text = nullptr;
+static lv_obj_t *battery_text = nullptr;
+static lv_obj_t *battery_icon = nullptr;
+static lv_obj_t *step_text = nullptr;
 
 void setupNetwork()
 {
@@ -108,26 +113,65 @@ lv_obj_t *setupGUI(){
   lv_obj_set_size(view, 240, 240);
   lv_obj_add_style(view, LV_OBJ_PART_MAIN, &cont_style);
 
-  //lv_obj_t *test_text = lv_label_create(view, nullptr);
-  test_text = lv_label_create(view, nullptr);
-  lv_obj_add_style(test_text, LV_OBJ_PART_MAIN, &japanese_style);
-  lv_label_set_text(test_text, LV_SYMBOL_OK LV_SYMBOL_WIFI LV_SYMBOL_PLAY "Applyテスト");
-  lv_obj_align(test_text,view,LV_ALIGN_CENTER,0,0);
+  clock_text = lv_label_create(view, nullptr);
+  lv_obj_add_style(clock_text, LV_OBJ_PART_MAIN, &japanese_style);
+  lv_label_set_text(clock_text, "sample");
+  lv_obj_align(clock_text,view,LV_ALIGN_CENTER,0,0);
 
-  lv_obj_t *statusBar_text = lv_label_create(view, nullptr);
+  // 最上部のステータスバー
+  statusBar_text = lv_obj_create(view, NULL);
+  lv_obj_set_size(statusBar_text,100,24);
   lv_obj_add_style(statusBar_text, LV_OBJ_PART_MAIN, &cont_style);
-  lv_label_set_text(statusBar_text, LV_SYMBOL_OK LV_SYMBOL_WIFI "Applyテスト");
   lv_obj_align(statusBar_text,view,LV_ALIGN_IN_TOP_LEFT,0,0);
 
-  updateTime();
+  //足アイコンを出そうとしてうまく行っていない
+  //lv_obj_t *step_icon = lv_img_create(statusBar_text, NULL);
+  //lv_img_set_src(step_icon, &step);
+  //lv_obj_add_style(step_icon, LV_OBJ_PART_MAIN, &cont_style);
+  //lv_obj_align(step_icon, statusBar_text, LV_ALIGN_IN_LEFT_MID, 5, 5);
+  
+  step_text = lv_label_create(statusBar_text, NULL);
+  lv_label_set_text(step_text,"00000");
+  lv_obj_add_style(step_text, LV_OBJ_PART_MAIN, &cont_style);
+  lv_obj_align(step_text,statusBar_text,LV_ALIGN_IN_RIGHT_MID,0,0);
 
+  // 最上部左側にバッテリー表示
+  lv_obj_t *battery_bar = lv_obj_create(view,NULL);
+  lv_obj_set_size(battery_bar, 60, 24);
+  lv_obj_align(battery_bar,view,LV_ALIGN_IN_TOP_RIGHT,0,0);
+  lv_obj_add_style(battery_bar, LV_OBJ_PART_MAIN, &cont_style);
+  
+  battery_text = lv_label_create(battery_bar, nullptr);
+  lv_obj_add_style(battery_text, LV_OBJ_PART_MAIN, &cont_style);
+  lv_label_set_text(battery_text, LV_SYMBOL_MINUS);
+  lv_obj_align(battery_text,battery_bar,LV_ALIGN_IN_RIGHT_MID,-16,0);
+
+  battery_icon = lv_label_create(battery_bar, nullptr);
+  lv_obj_add_style(battery_icon, LV_OBJ_PART_MAIN, &cont_style);
+  lv_label_set_text(battery_icon, LV_SYMBOL_MINUS);
+  lv_obj_align(battery_icon,battery_bar,LV_ALIGN_IN_LEFT_MID,8,0);
+
+  // 時刻とバッテリーバーの初回表示
+  updateTime();
+  updateStatusBar();
+  updateStep();
+
+  // 定期更新タスク登録
   lv_task_create(lv_update_task, 1000, LV_TASK_PRIO_LOWEST, NULL);
+  lv_task_create(lv_slowupdate_task, 30000, LV_TASK_PRIO_LOWEST, NULL);
+  
   return view;
 }
 
 static void lv_update_task(struct _lv_task_t *data)
 {
     updateTime();
+    updateStep();
+}
+
+static void lv_slowupdate_task(struct _lv_task_t *data)
+{
+    updateStatusBar();
 }
 
 static void updateTime() {
@@ -138,7 +182,36 @@ static void updateTime() {
   localtime_r(&now, &info);
   strftime(buf, sizeof(buf), "%H 時 %M 分", &info);
   
-  lv_label_set_text(test_text, buf);
+  lv_label_set_text(clock_text, buf);
+}
+
+
+static void updateStatusBar() {
+  TTGOClass *twatch = TTGOClass::getWatch();
+  int p = twatch->power->getBattPercentage();
+  char buf[64];
+  sprintf(buf,"%d\%",p);
+  lv_label_set_text(battery_text, buf);
+  
+  if(p>90){
+    lv_label_set_text(battery_icon, LV_SYMBOL_BATTERY_FULL);
+  }else if(p>70){
+    lv_label_set_text(battery_icon, LV_SYMBOL_BATTERY_3);
+  }else if(p>40){
+    lv_label_set_text(battery_icon, LV_SYMBOL_BATTERY_2);
+  }else if(p>15){
+    lv_label_set_text(battery_icon, LV_SYMBOL_BATTERY_1);
+  }else{
+    lv_label_set_text(battery_icon, LV_SYMBOL_BATTERY_EMPTY);
+  }
+}
+
+static void updateStep() {
+  TTGOClass *twatch = TTGOClass::getWatch();
+  char buf[64];
+  int p = twatch->bma->getCounter();
+  sprintf(buf,"%d\%",p);
+  lv_label_set_text(step_text, buf);
 }
 
 
