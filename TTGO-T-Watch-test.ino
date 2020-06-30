@@ -93,20 +93,31 @@ lv_obj_t *setupGUI(){
   lv_style_set_bg_opa(&cont_style, LV_OBJ_PART_MAIN, LV_OPA_COVER);
   lv_style_set_border_width(&cont_style, LV_OBJ_PART_MAIN, 0);
   
-  lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &IPAexGothic);
-  //lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &lv_font_montserrat_16);// LV_FONT_MONTSERRAT_16 16 px ASCII + built-in symbol
+  //lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &IPAexGothic);
+  lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &lv_font_montserrat_16);// LV_FONT_MONTSERRAT_16 16 px ASCII + built-in symbol
   //lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &lv_font_simsun_16_cjk); // LV_FONT_SIMSUN_16_CJK 16 px 1000 most common CJK radicals
   //  If you want to use LV_FONT_SIMSUN_16_CJK, Modify Arduino\libraries\TTGO_TWatch_Library-master\src\lv_conf.h 
   //  "#define LV_FONT_SIMSUN_16_CJK 1". But it's not include Japanese fonts.
   lv_style_set_text_color(&cont_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
-  
+
+  static lv_style_t japanese_style;
+  lv_style_copy(&japanese_style, &cont_style);
+  lv_style_set_text_font(&japanese_style, LV_STATE_DEFAULT, &IPAexGothic);
+
   lv_obj_t *view = lv_cont_create(lv_scr_act(), nullptr);
   lv_obj_set_size(view, 240, 240);
   lv_obj_add_style(view, LV_OBJ_PART_MAIN, &cont_style);
 
   lv_obj_t *test_text = lv_label_create(view, nullptr);
+  lv_obj_add_style(test_text, LV_OBJ_PART_MAIN, &japanese_style);
   lv_label_set_text(test_text, LV_SYMBOL_OK LV_SYMBOL_WIFI LV_SYMBOL_PLAY "Applyテスト");
   lv_obj_align(test_text,view,LV_ALIGN_CENTER,0,0);
+
+  lv_obj_t *statusBar_text = lv_label_create(view, nullptr);
+  lv_obj_add_style(statusBar_text, LV_OBJ_PART_MAIN, &cont_style);
+  lv_label_set_text(statusBar_text, LV_SYMBOL_OK LV_SYMBOL_WIFI "Applyテスト");
+  lv_obj_align(statusBar_text,view,LV_ALIGN_IN_TOP_LEFT,0,0);
+
   
   return view;
 }
