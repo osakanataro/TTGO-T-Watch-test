@@ -1,6 +1,6 @@
-#define LILYGO_TWATCH_2020_V1        // If you are using T-Watch-2020 version, please open this macro definition
+// Please select the model you want to use in config.h
+#include "config.h"
 
-#include <TTGO.h>
 #include <WiFi.h>
 #include <soc/rtc.h>
 
@@ -70,7 +70,7 @@ void low_energy()
         if (!WiFi.isConnected()) {
             lenergy = true;
             WiFi.mode(WIFI_OFF);
-            rtc_clk_cpu_freq_set(RTC_CPU_FREQ_2M);
+            setCpuFrequencyMhz(20);
         }
     } else {
         twatch->startLvglTick();
@@ -87,19 +87,22 @@ void low_energy()
 
 lv_obj_t *setupGUI(){
   static lv_style_t cont_style;
-  lv_style_copy(&cont_style, &lv_style_pretty_color);
-  cont_style.body.radius = 12;
-  cont_style.body.main_color = LV_COLOR_WHITE;
-  cont_style.body.grad_color = LV_COLOR_WHITE;
-  cont_style.body.opa = 255;
-  cont_style.body.border.width = 0;
-  cont_style.text.font = &IPAexGothic;
-  // cont_style.text.font = &lv_font_roboto_16;
-  cont_style.text.color = LV_COLOR_BLACK;
+  lv_style_init(&cont_style);
+  lv_style_set_radius(&cont_style, LV_OBJ_PART_MAIN, 12);
+  lv_style_set_bg_color(&cont_style, LV_OBJ_PART_MAIN, LV_COLOR_WHITE);
+  lv_style_set_bg_opa(&cont_style, LV_OBJ_PART_MAIN, LV_OPA_COVER);
+  lv_style_set_border_width(&cont_style, LV_OBJ_PART_MAIN, 0);
+  
+  lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &IPAexGothic);
+  //lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &lv_font_montserrat_16);// LV_FONT_MONTSERRAT_16 16 px ASCII + built-in symbol
+  //lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &lv_font_simsun_16_cjk); // LV_FONT_SIMSUN_16_CJK 16 px 1000 most common CJK radicals
+  //  If you want to use LV_FONT_SIMSUN_16_CJK, Modify Arduino\libraries\TTGO_TWatch_Library-master\src\lv_conf.h 
+  //  "#define LV_FONT_SIMSUN_16_CJK 1". But it's not include Japanese fonts.
+  lv_style_set_text_color(&cont_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
   
   lv_obj_t *view = lv_cont_create(lv_scr_act(), nullptr);
   lv_obj_set_size(view, 240, 240);
-  lv_obj_set_style(view, &cont_style);
+  lv_obj_add_style(view, LV_OBJ_PART_MAIN, &cont_style);
 
   lv_obj_t *test_text = lv_label_create(view, nullptr);
   lv_label_set_text(test_text, LV_SYMBOL_OK LV_SYMBOL_WIFI LV_SYMBOL_PLAY "Applyテスト");
@@ -197,7 +200,7 @@ void loop() {
   if (bits & WATCH_FLAG_SLEEP_EXIT) {
     if (lenergy) {
       lenergy = false;
-      rtc_clk_cpu_freq_set(RTC_CPU_FREQ_160M);
+      setCpuFrequencyMhz(160);
     }
     low_energy();
     if (bits & WATCH_FLAG_BMA_IRQ) {
