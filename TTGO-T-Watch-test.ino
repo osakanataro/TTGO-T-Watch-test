@@ -116,13 +116,13 @@ lv_obj_t *setupGUI(){
   // --- 各要素の描画枠 ---
   // ベース描画スペース: view
   lv_obj_t *view = lv_cont_create(lv_scr_act(), nullptr);
-  lv_obj_set_size(view, 240, 240);
+  lv_obj_set_size(view, TFT_WIDTH, TFT_HEIGHT);
   lv_obj_add_style(view, LV_OBJ_PART_MAIN, &cont_style);
 
   // 時刻表示部分
   clock_text = lv_label_create(view, nullptr);
   lv_obj_add_style(clock_text, LV_OBJ_PART_MAIN, &clock_style);
-  lv_label_set_text(clock_text, "sample");
+  lv_label_set_text(clock_text, "00時 00分");
   lv_obj_align(clock_text,view,LV_ALIGN_CENTER,0,0);
 
   // 最上部のステータスバー
@@ -188,7 +188,7 @@ static void updateTime() {
   char buf[64];
   time(&now);
   localtime_r(&now, &info);
-  strftime(buf, sizeof(buf), "%H 時 %M 分", &info);
+  strftime(buf, sizeof(buf), "%H時 %M分", &info);
   
   lv_label_set_text(clock_text, buf);
 }
