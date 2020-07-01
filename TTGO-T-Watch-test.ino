@@ -204,7 +204,9 @@ static void updateStatusBar() {
   sprintf(buf,"%d\%",p);
   lv_label_set_text(battery_text, buf);
   
-  if(p>90){
+  if(twatch->power->isChargeing()){
+    lv_label_set_text(battery_icon, LV_SYMBOL_CHARGE);
+  }else if(p>90){
     lv_label_set_text(battery_icon, LV_SYMBOL_BATTERY_FULL);
   }else if(p>70){
     lv_label_set_text(battery_icon, LV_SYMBOL_BATTERY_3);
