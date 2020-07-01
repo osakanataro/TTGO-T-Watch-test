@@ -85,6 +85,9 @@ void low_energy()
         //updateStepCounter(twatch->bma->getCounter());
         //updateBatteryLevel();
         //updateBatteryIcon(LV_ICON_CALCULATION);
+        updateTime();
+        updateStatusBar();
+        updateStep();
         lv_disp_trig_activity(NULL);
         twatch->openBL();
         twatch->bma->enableStepCountInterrupt();
