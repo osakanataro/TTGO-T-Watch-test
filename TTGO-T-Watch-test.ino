@@ -28,7 +28,8 @@ enum {
 #define WATCH_FLAG_AXP_IRQ      _BV(4)
 
 
-LV_FONT_DECLARE(IPAexGothic)
+LV_FONT_DECLARE(IPAexGothic);
+LV_FONT_DECLARE(IPAexGothic_48);
 LV_IMG_DECLARE(step);
 
 QueueHandle_t g_event_queue_handle = NULL;
@@ -91,30 +92,36 @@ void low_energy()
 }
 
 lv_obj_t *setupGUI(){
+  // --- スタイルの設定 ---
+  // 基本スタイル:cont_style
   static lv_style_t cont_style;
   lv_style_init(&cont_style);
   lv_style_set_radius(&cont_style, LV_OBJ_PART_MAIN, 12);
   lv_style_set_bg_color(&cont_style, LV_OBJ_PART_MAIN, LV_COLOR_WHITE);
   lv_style_set_bg_opa(&cont_style, LV_OBJ_PART_MAIN, LV_OPA_COVER);
   lv_style_set_border_width(&cont_style, LV_OBJ_PART_MAIN, 0);
-  
-  //lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &IPAexGothic);
   lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &lv_font_montserrat_16);// LV_FONT_MONTSERRAT_16 16 px ASCII + built-in symbol
-  //lv_style_set_text_font(&cont_style, LV_STATE_DEFAULT, &lv_font_simsun_16_cjk); // LV_FONT_SIMSUN_16_CJK 16 px 1000 most common CJK radicals
-  //  If you want to use LV_FONT_SIMSUN_16_CJK, Modify Arduino\libraries\TTGO_TWatch_Library-master\src\lv_conf.h 
-  //  "#define LV_FONT_SIMSUN_16_CJK 1". But it's not include Japanese fonts.
   lv_style_set_text_color(&cont_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
 
+  // 日本語表示用 16pt: japanese_style
   static lv_style_t japanese_style;
   lv_style_copy(&japanese_style, &cont_style);
   lv_style_set_text_font(&japanese_style, LV_STATE_DEFAULT, &IPAexGothic);
 
+  // 時計表示部分用 16pt: clock_style
+  static lv_style_t clock_style;
+  lv_style_copy(&clock_style, &cont_style);
+  lv_style_set_text_font(&clock_style, LV_STATE_DEFAULT, &IPAexGothic_48);
+
+  // --- 各要素の描画枠 ---
+  // ベース描画スペース: view
   lv_obj_t *view = lv_cont_create(lv_scr_act(), nullptr);
   lv_obj_set_size(view, 240, 240);
   lv_obj_add_style(view, LV_OBJ_PART_MAIN, &cont_style);
 
+  // 時刻表示部分
   clock_text = lv_label_create(view, nullptr);
-  lv_obj_add_style(clock_text, LV_OBJ_PART_MAIN, &japanese_style);
+  lv_obj_add_style(clock_text, LV_OBJ_PART_MAIN, &clock_style);
   lv_label_set_text(clock_text, "sample");
   lv_obj_align(clock_text,view,LV_ALIGN_CENTER,0,0);
 
@@ -129,6 +136,7 @@ lv_obj_t *setupGUI(){
   //lv_img_set_src(step_icon, &step);
   //lv_obj_add_style(step_icon, LV_OBJ_PART_MAIN, &cont_style);
   //lv_obj_align(step_icon, statusBar_text, LV_ALIGN_IN_LEFT_MID, 5, 5);
+  //lv_obj_set_pos(step_icon,60,60);
   
   step_text = lv_label_create(statusBar_text, NULL);
   lv_label_set_text(step_text,"00000");
