@@ -1,8 +1,14 @@
 // Please select the model you want to use in config.h
 #include "config.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/timers.h"
+#include "freertos/queue.h"
+#include "esp_wifi.h"
 #include <WiFi.h>
 #include <soc/rtc.h>
+#include <time.h>
 
 #define G_EVENT_VBUS_PLUGIN         _BV(0)
 #define G_EVENT_VBUS_REMOVE         _BV(1)
@@ -239,12 +245,14 @@ static void updateStep() {
 
 bool syncRtcBySystemTime()
 {
-  static  struct tm timeinfo;
+  struct tm newtimeinfo;
   bool ret = false;
-  static int retry = 0;
-  configTzTime(RTC_TIME_ZONE, "ntp.jst.mfeed.ad.jp", "pool.ntp.org");
+  int retry = 0;
+  //configTzTime(RTC_TIME_ZONE, "ntp.jst.mfeed.ad.jp", "pool.ntp.org");
+  configTzTime("JST-9", "ntp.jst.mfeed.ad.jp", "pool.ntp.org");
+  //configTime(32400,0, "ntp.jst.mfeed.ad.jp", "pool.ntp.org");
   do {
-    ret = getLocalTime(&timeinfo);
+    ret = getLocalTime(&newtimeinfo);
     if (!ret) {
       Serial.printf("get ntp fail,retry : %d \n", retry++);
     }
@@ -256,17 +264,47 @@ bool syncRtcBySystemTime()
   if(ret){
     char format[256];
     Serial.print("NTP Time is : ");
-    snprintf(format, sizeof(format), "%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    snprintf(format, sizeof(format), "%d-%d-%d/%d:%d:%d", newtimeinfo.tm_year + 1900, newtimeinfo.tm_mon + 1, newtimeinfo.tm_mday, newtimeinfo.tm_hour, newtimeinfo.tm_min, newtimeinfo.tm_sec);
     Serial.println(format);
-    twatch->rtc->setDateTime(timeinfo.tm_year, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    twatch->rtc->setDateTime(newtimeinfo.tm_year, newtimeinfo.tm_mon + 1, newtimeinfo.tm_mday, newtimeinfo.tm_hour, newtimeinfo.tm_min, newtimeinfo.tm_sec);
   }
 }
+
+void syncSystemTimeByRtc()
+{
+    Serial.print("Read RTC :");
+    Serial.println(twatch->rtc->formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
+    struct tm dt;
+    getLocalTime(&dt);
+    Serial.printf("getLocalTime is %d:%d:%d\n",dt.tm_hour,dt.tm_min,dt.tm_sec);
+    RTC_Date d = twatch->rtc->getDateTime();
+    dt.tm_hour = d.hour;
+    dt.tm_min  = d.minute;
+    dt.tm_sec  = d.second;
+    dt.tm_mday  = d.day;
+    dt.tm_mon = d.month-1;
+    dt.tm_year = d.year-1900; 
+    time_t timertc = mktime(&dt);
+    Serial.print("RTC unixtime is ");
+    Serial.print(timertc);
+    Serial.print(" ,system unixtime is ");
+    time_t timesys = time(NULL);
+    Serial.println(timesys);
+    struct timeval tv ={
+      .tv_sec = timertc
+    };
+    settimeofday(&tv,NULL);
+    
+    getLocalTime(&dt);
+}
+
 
 void setup() {
   Serial.begin(115200);
 
   // タイムゾーン設定
-  setenv("TZ",RTC_TIME_ZONE,1);
+  //setenv("TZ",RTC_TIME_ZONE,1);
+  setenv("TZ","JST-9",1);
   tzset();
   
   //Create a program that allows the required message objects and group flags
@@ -342,8 +380,20 @@ void setup() {
 
   // 仮設のWiFi接続してNTP時刻更新する処理
   WiFi.begin(ssid,password);
+  Serial.println("Waiting for WiFi connection");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(200);
+    Serial.print(".");
+    if(60000<millis()){
+      break;
+    }
+  }
+  Serial.println(WiFi.localIP());
+  WiFi.printDiag(Serial);
+  Serial.println("");
   syncRtcBySystemTime();
   WiFi.disconnect(true);
+  syncSystemTimeByRtc();
   //
   setupGUI();
 }

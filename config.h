@@ -9,8 +9,8 @@
 
 #include <LilyGoWatch.h>
 
-//#define RTC_TIME_ZONE "JST-9"
-#define RTC_TIME_ZONE "TZ_Asia_Tokyo"
+#define RTC_TIME_ZONE "JST-9"
+//#define RTC_TIME_ZONE "TZ_Asia_Tokyo"
 
 #define EVERY_1SEC  1000
 #define EVERY_2SEC  2000
