@@ -168,8 +168,8 @@ lv_obj_t *setupGUI(){
   updateStep();
 
   // 定期更新タスク登録
-  lv_task_create(lv_update_task, 1000, LV_TASK_PRIO_LOWEST, NULL);
-  lv_task_create(lv_slowupdate_task, 30000, LV_TASK_PRIO_LOWEST, NULL);
+  lv_task_create(lv_update_task, EVERY_2SEC, LV_TASK_PRIO_LOWEST, NULL);
+  lv_task_create(lv_slowupdate_task, EVERY_30SEC, LV_TASK_PRIO_LOWEST, NULL);
   
   return view;
 }
@@ -187,13 +187,23 @@ static void lv_slowupdate_task(struct _lv_task_t *data)
 
 static void updateTime() {
   time_t now;
-  struct tm  info;
+  struct tm  timeinfo;
   char buf[64];
+
   time(&now);
-  localtime_r(&now, &info);
-  strftime(buf, sizeof(buf), "%H時 %M分", &info);
-  
+  localtime_r(&now, &timeinfo);
+  strftime(buf, sizeof(buf), "%H時 %M分", &timeinfo);
   lv_label_set_text(clock_text, buf);
+
+  char format[256];
+  snprintf(format, sizeof(format), "localtime:%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  Serial.println(format);
+  gmtime_r(&now, &timeinfo);
+  snprintf(format, sizeof(format), "gmt  time:%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  Serial.println(format);
+
+  Serial.print("RTC  time:");
+  Serial.println(twatch->rtc->formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
 }
 
 
@@ -227,9 +237,37 @@ static void updateStep() {
   lv_label_set_text(step_text, buf);
 }
 
+bool syncRtcBySystemTime()
+{
+  static  struct tm timeinfo;
+  bool ret = false;
+  static int retry = 0;
+  configTzTime(RTC_TIME_ZONE, "ntp.jst.mfeed.ad.jp", "pool.ntp.org");
+  do {
+    ret = getLocalTime(&timeinfo);
+    if (!ret) {
+      Serial.printf("get ntp fail,retry : %d \n", retry++);
+    }
+  }  while (!ret && retry < 3);
+  
+  Serial.print("RTC Time is : ");
+  Serial.println(twatch->rtc->formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
+  
+  if(ret){
+    char format[256];
+    Serial.print("NTP Time is : ");
+    snprintf(format, sizeof(format), "%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    Serial.println(format);
+    twatch->rtc->setDateTime(timeinfo.tm_year, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  }
+}
 
 void setup() {
   Serial.begin(115200);
+
+  // タイムゾーン設定
+  setenv("TZ",RTC_TIME_ZONE,1);
+  tzset();
   
   //Create a program that allows the required message objects and group flags
   g_event_queue_handle = xQueueCreate(20, sizeof(uint8_t));
@@ -302,6 +340,11 @@ void setup() {
   //When the initialization is complete, turn on the backlight
   twatch->openBL();
 
+  // 仮設のWiFi接続してNTP時刻更新する処理
+  WiFi.begin(ssid,password);
+  syncRtcBySystemTime();
+  WiFi.disconnect(true);
+  //
   setupGUI();
 }
 
