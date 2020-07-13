@@ -87,7 +87,8 @@ void low_energy()
     } else {
         twatch->startLvglTick();
         twatch->displayWakeup();
-        twatch->rtc->syncToSystem();
+        //twatch->rtc->syncToSystem();
+        syncSystemTimeByRtc();
         //updateStepCounter(twatch->bma->getCounter());
         //updateBatteryLevel();
         //updateBatteryIcon(LV_ICON_CALCULATION);
@@ -98,6 +99,52 @@ void low_energy()
         twatch->openBL();
         twatch->bma->enableStepCountInterrupt();
     }
+}
+
+static void event_handler(lv_obj_t *obj, lv_event_t event){
+  time_t nowtimeinfo;
+  time(&nowtimeinfo);
+  Serial.printf("timecheck: %d\n",nowtimeinfo);
+  IPAddress checkip(0,0,0,0);
+  unsigned long starttime=millis();
+  
+  if (event == LV_EVENT_CLICKED){
+    Serial.printf("Clicked\n");
+    WiFi.begin(ssid,password);
+    Serial.println("Waiting for WiFi connection");
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(200);
+      Serial.print(".");
+      if(10000<(millis()-starttime)){
+        Serial.println();
+        break;
+      }
+    }
+    Serial.println(WiFi.localIP());
+    time(&nowtimeinfo);
+    Serial.printf("timecheck: %d\n",nowtimeinfo);
+    while(WiFi.localIP() == checkip){
+      delay(200);
+      Serial.print(".");
+      if(20000<(millis()-starttime)){
+        Serial.println();
+        WiFi.printDiag(Serial);
+        ESP.restart();
+        break;
+      }
+    }
+
+    time(&nowtimeinfo);
+    Serial.printf("timecheck: %d\n",nowtimeinfo);
+    Serial.println(WiFi.localIP());
+    WiFi.printDiag(Serial);
+    Serial.println("");
+    syncRtcBySystemTime();
+    //WiFi.disconnect(true);
+    syncSystemTimeByRtc();
+    time(&nowtimeinfo);
+    Serial.printf("timecheck: %d\n",nowtimeinfo);
+  }
 }
 
 lv_obj_t *setupGUI(){
@@ -168,6 +215,13 @@ lv_obj_t *setupGUI(){
   lv_label_set_text(battery_icon, LV_SYMBOL_MINUS);
   lv_obj_align(battery_icon,battery_bar,LV_ALIGN_IN_LEFT_MID,8,0);
 
+  // NTPボタン
+  lv_obj_t *ntpbtn = lv_btn_create(view,nullptr);
+  lv_obj_set_event_cb(ntpbtn,event_handler);
+  lv_obj_align(ntpbtn,view,LV_ALIGN_IN_BOTTOM_RIGHT,0,0);
+  lv_obj_t *ntpbtnlabel = lv_label_create(ntpbtn,nullptr);
+  lv_label_set_text(ntpbtnlabel,"NTP");
+
   // 時刻とバッテリーバーの初回表示
   updateTime();
   updateStatusBar();
@@ -205,10 +259,10 @@ static void updateTime() {
   snprintf(format, sizeof(format), "localtime:%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
   Serial.println(format);
   gmtime_r(&now, &timeinfo);
-  snprintf(format, sizeof(format), "gmt  time:%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-  Serial.println(format);
+  //snprintf(format, sizeof(format), "gmt  time:%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  //Serial.println(format);
 
-  Serial.print("RTC  time:");
+  //Serial.print("RTC  time:");
   Serial.println(twatch->rtc->formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
 }
 
@@ -249,8 +303,8 @@ bool syncRtcBySystemTime()
   bool ret = false;
   int retry = 0;
   //configTzTime(RTC_TIME_ZONE, "ntp.jst.mfeed.ad.jp", "pool.ntp.org");
+  delay(500);
   configTzTime("JST-9", "ntp.jst.mfeed.ad.jp", "pool.ntp.org");
-  //configTime(32400,0, "ntp.jst.mfeed.ad.jp", "pool.ntp.org");
   do {
     ret = getLocalTime(&newtimeinfo);
     if (!ret) {
@@ -379,21 +433,21 @@ void setup() {
   twatch->openBL();
 
   // 仮設のWiFi接続してNTP時刻更新する処理
-  WiFi.begin(ssid,password);
-  Serial.println("Waiting for WiFi connection");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(200);
-    Serial.print(".");
-    if(60000<millis()){
-      break;
-    }
-  }
-  Serial.println(WiFi.localIP());
-  WiFi.printDiag(Serial);
-  Serial.println("");
-  syncRtcBySystemTime();
-  WiFi.disconnect(true);
-  syncSystemTimeByRtc();
+  //WiFi.begin(ssid,password);
+  //Serial.println("Waiting for WiFi connection");
+  //while (WiFi.status() != WL_CONNECTED) {
+  //  delay(200);
+  //  Serial.print(".");
+  //  if(60000<millis()){
+  //    break;
+  //  }
+  //}
+  //Serial.println(WiFi.localIP());
+  //WiFi.printDiag(Serial);
+  //Serial.println("");
+  //syncRtcBySystemTime();
+  //WiFi.disconnect(true);
+  //syncSystemTimeByRtc();
   //
   setupGUI();
 }
