@@ -5,10 +5,11 @@
 #include "freertos/task.h"
 #include "freertos/timers.h"
 #include "freertos/queue.h"
-#include "esp_wifi.h"
-#include <WiFi.h>
 #include <soc/rtc.h>
-#include <time.h>
+#include "esp_wifi.h"
+#include "esp_sleep.h"
+#include <WiFi.h>
+// #include <time.h>
 
 #define G_EVENT_VBUS_PLUGIN         _BV(0)
 #define G_EVENT_VBUS_REMOVE         _BV(1)
@@ -26,6 +27,7 @@ enum {
     Q_EVENT_BMA_INT,
     Q_EVENT_AXP_INT,
 } ;
+
 #define DEFAULT_SCREEN_TIMEOUT  30*1000
 
 #define WATCH_FLAG_SLEEP_MODE   _BV(1)
@@ -83,6 +85,12 @@ void low_energy()
             lenergy = true;
             WiFi.mode(WIFI_OFF);
             setCpuFrequencyMhz(20);
+            
+            Serial.println("ENTER IN LIGHT SLEEEP MODE");
+            gpio_wakeup_enable ((gpio_num_t)AXP202_INT, GPIO_INTR_LOW_LEVEL);
+            gpio_wakeup_enable ((gpio_num_t)BMA423_INT1, GPIO_INTR_HIGH_LEVEL);
+            esp_sleep_enable_gpio_wakeup ();
+            esp_light_sleep_start();
         }
     } else {
         twatch->startLvglTick();
@@ -262,7 +270,7 @@ static void updateTime() {
   //snprintf(format, sizeof(format), "gmt  time:%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
   //Serial.println(format);
 
-  //Serial.print("RTC  time:");
+  Serial.print("RTC  time:");
   Serial.println(twatch->rtc->formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
 }
 
@@ -384,9 +392,9 @@ void setup() {
   //Initialize lvgl
   twatch->lvgl_begin();
 
-  //Initialize bma423
-  twatch->bma->begin();
-  //Enable BMA423 interrupt
+  // Enable BMA423 interrupt ，
+  // The default interrupt configuration,
+  // you need to set the acceleration parameters, please refer to the BMA423_Accel example
   twatch->bma->attachInterrupt();
   
   //Connection interrupted to the specified pin
